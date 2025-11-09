@@ -1,5 +1,53 @@
 const {contextBridge, ipcRenderer} = require('electron');
 
+contextBridge.exposeInMainWorld('serialAPI', {
+  // List available ports
+  listPorts: () => ipcRenderer.invoke('serial:list'),
+  
+  // Find ports by vendor/product ID
+  findByIds: (vendorId, productId) => 
+    ipcRenderer.invoke('serial:findByIds', { vendorId, productId }),
+  
+  // Connect to a port by path
+  connect: (path, baudRate = 9600) => 
+    ipcRenderer.invoke('serial:connect', { path, baudRate }),
+  
+  // Connect by vendor/product ID (first match)
+  connectByIds: (vendorId, productId, baudRate = 9600) =>
+    ipcRenderer.invoke('serial:connectByIds', { vendorId, productId, baudRate }),
+  
+  // Send data to port
+  write: (path, data) => 
+    ipcRenderer.invoke('serial:write', { path, data }),
+  
+  // Disconnect from port
+  disconnect: (path) => 
+    ipcRenderer.invoke('serial:disconnect', { path }),
+  
+  // Listen for incoming data
+  onData: (callback) => {
+    const listener = (event, data) => callback(data);
+    ipcRenderer.on('serial:data', listener);
+    return () => ipcRenderer.removeListener('serial:data', listener);
+  },
+  
+  // Listen for errors
+  onError: (callback) => {
+    const listener = (event, data) => callback(data);
+    ipcRenderer.on('serial:error', listener);
+    return () => ipcRenderer.removeListener('serial:error', listener);
+  },
+  
+  // Listen for disconnection
+  onDisconnected: (callback) => {
+    const listener = (event, data) => callback(data);
+    ipcRenderer.on('serial:disconnected', listener);
+    return () => ipcRenderer.removeListener('serial:disconnected', listener);
+  }
+});
+
+
+
 contextBridge.exposeInMainWorld('EditorPreload', {
   isInitiallyFullscreen: () => ipcRenderer.sendSync('is-initially-fullscreen'),
   getInitialFile: () => ipcRenderer.invoke('get-initial-file'),

@@ -18,7 +18,7 @@ require('./context-menu');
 require('./menu-bar');
 require('./crash-messages');
 
-app.enableSandbox();
+//app.enableSandbox();
 
 // Allows certain versions of Scratch Link to work without an internet connection
 // https://github.com/LLK/scratch-desktop/blob/4b462212a8e406b15bcf549f8523645602b46064/src/main/index.js#L45
@@ -66,6 +66,7 @@ app.on('session-created', (session) => {
     window.handlePermissionRequest(permission, details).then((allowed) => {
       callback(allowed);
     });
+    
   });
 
   session.webRequest.onBeforeRequest((details, callback) => {

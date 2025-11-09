@@ -38,7 +38,8 @@ const WEB_PROTOCOLS = ['http:', 'https:'];
 
 class ProjectRunningWindow extends AbtractWindow {
   handlePermissionCheck (permission, details) {
-    return (
+    let decision = true;
+    decision =  (
       // Autoplay audio and media device enumeration
       permission === 'media' ||
 
@@ -50,8 +51,12 @@ class ProjectRunningWindow extends AbtractWindow {
       permission === 'notifications' ||
 
       // Custom fonts menu
-      permission === 'local-fonts'
+      permission === 'local-fonts' ||
+
+       // serial
+      permission === 'serial'
     );
+    return decision;
   }
 
   async handlePermissionRequest (permission, details) {

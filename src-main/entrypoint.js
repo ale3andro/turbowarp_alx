@@ -4,6 +4,9 @@
 
 const {app, dialog} = require('electron');
 
+app.commandLine.appendSwitch('enable-experimental-web-platform-features');
+app.commandLine.appendSwitch('enable-blink-features', 'Serial,WebSerial');
+
 const APP_NAME = 'TurboWarp Desktop';
 const stringifyError = (error) => (error && error.stack) ? error.stack : error;
 

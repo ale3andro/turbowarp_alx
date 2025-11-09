@@ -3,6 +3,8 @@ const path = require('path');
 const openExternal = require('../open-external');
 const settings = require('../settings');
 
+const { SerialPort } = require('serialport');
+
 /** @type {Map<unknown, AbstractWindow[]>} */
 const windowsByClass = new Map();
 
@@ -59,6 +61,225 @@ class AbstractWindow {
         windows.splice(idx, 1);
       }
     });
+
+
+
+
+
+    
+
+    // Store active serial connections
+    const serialConnections = new Map();
+
+    // List available serial ports
+    this.ipc.handle('serial:list', async () => {
+      try {
+        const ports = await SerialPort.list();
+        return {
+          success: true,
+          ports: ports.map(p => ({
+            path: p.path,
+            manufacturer: p.manufacturer || 'Unknown',
+            vendorId: p.vendorId,
+            productId: p.productId
+          }))
+        };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    // Connect to a serial port
+    this.ipc.handle('serial:connect', async (event, { path, baudRate = 9600 }) => {
+      try {
+        // Close existing connection if any
+        if (serialConnections.has(path)) {
+          const existingPort = serialConnections.get(path);
+          existingPort.close();
+          serialConnections.delete(path);
+        }
+
+        const port = new SerialPort({ path, baudRate });
+
+        return new Promise((resolve, reject) => {
+          port.on('open', () => {
+            console.log(`Serial port ${path} opened`);
+            
+            // Handle incoming data
+            port.on('data', (data) => {
+              event.sender.send('serial:data', {
+                path,
+                data: data.toString()
+              });
+            });
+
+            port.on('error', (err) => {
+              console.error(`Serial error on ${path}:`, err);
+              event.sender.send('serial:error', {
+                path,
+                error: err.message
+              });
+            });
+
+            port.on('close', () => {
+              console.log(`Serial port ${path} closed`);
+              serialConnections.delete(path);
+              event.sender.send('serial:disconnected', { path });
+            });
+
+            serialConnections.set(path, port);
+            resolve({ success: true, path });
+          });
+
+          port.on('error', (err) => {
+            reject({ success: false, error: err.message });
+          });
+        });
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    // Send data to serial port
+    this.ipc.handle('serial:write', async (event, { path, data }) => {
+      try {
+        const port = serialConnections.get(path);
+        if (!port || !port.isOpen) {
+          return { success: false, error: 'Port not connected' };
+        }
+
+        return new Promise((resolve, reject) => {
+          port.write(data + '\n', (err) => {
+            if (err) {
+              reject({ success: false, error: err.message });
+            } else {
+              resolve({ success: true });
+            }
+          });
+        });
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    // Disconnect from serial port
+    this.ipc.handle('serial:disconnect', async (event, { path }) => {
+      try {
+        const port = serialConnections.get(path);
+        if (port) {
+          port.close();
+          serialConnections.delete(path);
+        }
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    // Find port by vendor/product ID
+    this.ipc.handle('serial:findByIds', async (event, { vendorId, productId }) => {
+      try {
+        const ports = await SerialPort.list();
+        const matchingPorts = ports.filter(p => {
+          const vendorMatch = vendorId ? p.vendorId?.toLowerCase() === vendorId.toLowerCase() : true;
+          const productMatch = productId ? p.productId?.toLowerCase() === productId.toLowerCase() : true;
+          return vendorMatch && productMatch;
+        });
+        
+        return {
+          success: true,
+          ports: matchingPorts.map(p => ({
+            path: p.path,
+            manufacturer: p.manufacturer || 'Unknown',
+            vendorId: p.vendorId,
+            productId: p.productId
+          }))
+        };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    // Connect by vendor/product ID (connects to first match)
+    this.ipc.handle('serial:connectByIds', async (event, { vendorId, productId, baudRate = 9600 }) => {
+      try {
+        const ports = await SerialPort.list();
+        const matchingPort = ports.find(p => {
+          const vendorMatch = vendorId ? p.vendorId?.toLowerCase() === vendorId.toLowerCase() : true;
+          const productMatch = productId ? p.productId?.toLowerCase() === productId.toLowerCase() : true;
+          return vendorMatch && productMatch;
+        });
+
+        if (!matchingPort) {
+          return { success: false, error: 'No matching device found' };
+        }
+
+        // Close existing connection if any
+        if (serialConnections.has(matchingPort.path)) {
+          const existingPort = serialConnections.get(matchingPort.path);
+          existingPort.close();
+          serialConnections.delete(matchingPort.path);
+        }
+
+        const port = new SerialPort({ path: matchingPort.path, baudRate });
+
+        return new Promise((resolve, reject) => {
+          port.on('open', () => {
+            console.log(`Serial port ${matchingPort.path} opened`);
+            
+            // Handle incoming data
+            port.on('data', (data) => {
+              event.sender.send('serial:data', {
+                path: matchingPort.path,
+                data: data.toString()
+              });
+            });
+
+            port.on('error', (err) => {
+              console.error(`Serial error on ${matchingPort.path}:`, err);
+              event.sender.send('serial:error', {
+                path: matchingPort.path,
+                error: err.message
+              });
+            });
+
+            port.on('close', () => {
+              console.log(`Serial port ${matchingPort.path} closed`);
+              serialConnections.delete(matchingPort.path);
+              event.sender.send('serial:disconnected', { path: matchingPort.path });
+            });
+
+            serialConnections.set(matchingPort.path, port);
+            resolve({ success: true, path: matchingPort.path });
+          });
+
+          port.on('error', (err) => {
+            reject({ success: false, error: err.message });
+          });
+        });
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   }
 
   static getAllWindows () {
@@ -178,10 +399,19 @@ class AbstractWindow {
     options.webPreferences = {
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: false,
+      
+      experimentalFeatures: true,
+      enableBlinkFeatures: 'Serial',
+      /*
+      nodeIntegration: false,
+      contextIsolation: true,
       sandbox: true,
+      */
     };
 
     const preloadName = this.getPreload();
+
     if (preloadName) {
       options.webPreferences.preload = path.resolve(__dirname, '../../src-preload/', `${preloadName}.js`);
     }

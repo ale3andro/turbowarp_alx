@@ -296,7 +296,7 @@ class EditorWindow extends ProjectRunningWindow {
 
       this.updateRichPresence();
     });
-    this.window.setTitle(APP_NAME);
+    this.window.setTitle("APP_NAME");
 
     this.window.on('focus', () => {
       this.updateRichPresence();

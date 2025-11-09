@@ -1,7 +1,7 @@
 {
   "name": "turbowarp-desktop",
   "description": "Scratch mod with a compiler, dark mode, a bunch of addons, and more.",
-  "version": "1.15.0",
+  "version": "1.15.9",
   "license": "GPL-3.0",
   "author": {
     "email": "contact@turbowarp.org",
@@ -17,7 +17,8 @@
     "electron:package:dir": "electron-builder --dir"
   },
   "dependencies": {
-    "semver": "^7.7.3"
+    "semver": "^7.7.3",
+    "serialport": "^13.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.28.4",

@@ -19,7 +19,7 @@ class ArduinoWebSerial {
   getInfo() {
     return {
       id: 'arduinowebserial',
-      name: 'S1 Arduino',
+      name: 'R3 Arduino',
       color1: '#007bff',
       color2: '#0062cc',
       blocks: [
@@ -289,7 +289,7 @@ class ArduinoWebSerial {
         {
           opcode: 'connectionStatus',
           blockType: Scratch.BlockType.BOOLEAN,
-          text: 'Συνδεδεμένο με S1;'
+          text: 'Συνδεδεμένο με R3;'
         },{
           opcode: 'disconnect',
           blockType: Scratch.BlockType.COMMAND,
@@ -351,13 +351,13 @@ class ArduinoWebSerial {
         return true;
         }
         let ports; 
-        window.serialAPI.findByIds('2341').then(result => {
+        window.serialAPI.findByIds('1a86').then(result => {
         if (result.success) {
             ports  = result.ports;
             if (ports.length > 0) {
                 this.port = ports[0].path;
-                window.serialAPI.connectByIds('2341', null, 9600).then(result => {
-                    alert('Συνδέθηκε στο S1 Arduino!');
+                window.serialAPI.connectByIds('1a86', null, 9600).then(result => {
+                    alert('Συνδέθηκε στο R3 Arduino!');
                     this.dataListener = window.serialAPI.onData((data) => {
                         this.lastMessage = data.data;
                         if (this.debug) 
@@ -366,7 +366,7 @@ class ArduinoWebSerial {
                     return true;
                 });
             } else {
-                alert('Δεν βρέθηκε συνδεδεμένο S1!');
+                alert('Δεν βρέθηκε συνδεδεμένο R3!');
                 return false;
             }
         }
@@ -377,7 +377,7 @@ class ArduinoWebSerial {
 
   async send(args) {
     if (!this.port) {
-      alert('Δεν υπάρχει σύνδεση με το S1');
+      alert('Δεν υπάρχει σύνδεση με το R3');
       return;
     }
     //await this.writer.write(args.MESSAGE + '\n');
@@ -393,7 +393,7 @@ class ArduinoWebSerial {
   
   async led(args) {
     if (!this.port) {
-      alert('Χωρίς σύνδεση με το S1!');
+      alert('Χωρίς σύνδεση με το R3!');
       return;
     }
     const pin = args.PIN;
@@ -404,7 +404,7 @@ class ArduinoWebSerial {
 
   async led_brightness(args) {
     if (!this.port) {
-      alert('Χωρίς σύνδεση με το S1!');
+      alert('Χωρίς σύνδεση με το R3!');
       return;
     }
     const pin = args.PIN;
@@ -416,7 +416,7 @@ class ArduinoWebSerial {
 
   async motor(args) {
     if (!this.port) {
-      alert('Χωρίς σύνδεση με το S1!');
+      alert('Χωρίς σύνδεση με το R3!');
       return;
     }
     const speed = args.SPEED;
@@ -429,7 +429,7 @@ class ArduinoWebSerial {
 
   async buzzer(args) {
     if (!this.port) {
-      alert('Χωρίς σύνδεση με το S1!');
+      alert('Χωρίς σύνδεση με το R3!');
       return;
     }
     const pin = args.PIN;
@@ -575,7 +575,7 @@ class ArduinoWebSerial {
 
   async neopixel(args) {
     if (!this.port) {
-      alert('Χωρίς σύνδεση με το S1!');
+      alert('Χωρίς σύνδεση με το R3!');
       return;
     }
     const pin = args.PIN;
@@ -607,7 +607,7 @@ class ArduinoWebSerial {
 
   async servo(args) {
     if (!this.port) {
-      alert('Χωρίς σύνδεση με το S1!');
+      alert('Χωρίς σύνδεση με το R3!');
       return;
     }
     const pin = args.PIN;
@@ -619,7 +619,7 @@ class ArduinoWebSerial {
 
   async readTemp(args) {
     if (!this.port) {
-      alert('Χωρίς σύνδεση με το S1!');
+      alert('Χωρίς σύνδεση με το R3!');
       return;
     }
     const pin = args.PIN;
@@ -640,7 +640,7 @@ class ArduinoWebSerial {
 
   async readHum(args) {
     if (!this.port) {
-      alert('Χωρίς σύνδεση με το S1!');
+      alert('Χωρίς σύνδεση με το R3!');
       return;
     }
     const pin = args.PIN;
@@ -661,7 +661,7 @@ class ArduinoWebSerial {
 
   async readAnalog(args) {
     if (!this.port || !this.reader) {
-      alert('Δεν έχει γίνει σύνδεση με το S1');
+      alert('Δεν έχει γίνει σύνδεση με το R3');
       return;
     }
     const pin = args.PIN;
@@ -682,7 +682,7 @@ class ArduinoWebSerial {
   
   async isButtonPressed(args) {
     if (!this.port) {
-      alert('Χωρίς σύνδεση με το S1!');
+      alert('Χωρίς σύνδεση με το R3!');
       return;
     }
     const pin = args.PIN;
@@ -702,7 +702,7 @@ class ArduinoWebSerial {
 
   async isButton2Pressed(args) { // κουμπί αφής
     if (!this.port) {
-      alert('Χωρίς σύνδεση με το S1!');
+      alert('Χωρίς σύνδεση με το R3!');
       return;
     }
     const pin = args.PIN;

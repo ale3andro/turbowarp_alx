@@ -5,6 +5,7 @@ class ArduinoWebSerial {
     this.debug = true;
     this.lastMessage = '';
     this.newMessage = false;
+    this.validFirmware = false;
 
 
     //OSBOLETE?
@@ -343,7 +344,7 @@ class ArduinoWebSerial {
     };
   }
 
-  async connect() {
+  connect() {
     if (this.port) { 
         console.log('Already connected');
         return true;
@@ -354,7 +355,7 @@ class ArduinoWebSerial {
             ports  = result.ports;
             if (ports.length > 0) {
                 this.port = ports[0].path;
-                window.serialAPI.connectByIds('2341', null, 9600).then(result => {
+                window.serialAPI.connectByIds('2341', null, 115200).then(result => {
                     this.dataListener = window.serialAPI.onData((data) => {
                         if (this.newMessage) {
                           this.lastMessage = '';
@@ -363,21 +364,27 @@ class ArduinoWebSerial {
                         this.lastMessage = this.lastMessage + data.data;
                         if (data.data.includes('\n')) {
                           this.newMessage = true;
+                          console.log('Type of message: ', typeof this.lastMessage);
                         }
-                        /*
-                        if (this.debug) 
-                            console.log('Received:', data.data);
-                        */  
                     });
-
-                    window.serialAPI.write(this.port, "ACK");
-                    new Promise(resolve => setTimeout(resolve, 20));
-                    if (this.lastMessage=='ALX')
-                      alert('Συνδέθηκε στο S1 Arduino!');
-                    else 
-                      alert('S1 but with no alx_firmata');
-                    return true;
                 });
+                // Arduino kind of resets after a succesfull serial connection, so wait for it to reset and send the first message
+                new Promise(resolve => setTimeout(resolve, 3000)).then(() => {
+                  if (this.lastMessage.trim()==="alx_firmata_kindof") {
+                    this.validFirmware = true;
+                    alert('Συνδέθηκε στο S1 Arduino!');
+                    if (this.debug)
+                      console.log('S1 with the correct firmware!');
+                  }
+                  else {
+                    alert('S1 βρέθηκε αλλά χωρίς το σωστό firmware...');
+                    this.validFirmware = false;
+                    if (this.debug) 
+                      console.log('S1 but not flashed with the correct firmware');
+                    
+                  }
+                });   
+               
             } else {
                 alert('Δεν βρέθηκε συνδεδεμένο S1!');
                 return false;
@@ -390,8 +397,8 @@ class ArduinoWebSerial {
 
   async waitForMessage(timeout = 5000) {
     const startTime = Date.now();
-    // Give 10ms for the serial listener to start picking up chuncks
-    await new Promise(resolve => setTimeout(resolve, 10));
+    // Give 20ms for the serial listener to start picking up data
+    await new Promise(resolve => setTimeout(resolve, 20));
     while (!this.newMessage) {
       if (Date.now() - startTime > timeout) {
         throw new Error('Timeout waiting for serial message');
@@ -404,6 +411,10 @@ class ArduinoWebSerial {
   async send(args) {
     if (!this.port) {
       alert('Δεν υπάρχει σύνδεση με το S1');
+      return;
+    }
+    if (!this.validFirmware) {
+      alert('Πρέπει να flashάρεις το S1 με το σωσtό firmware πριν τη χρήση..');
       return;
     }
     window.serialAPI.write(this.port, args.MESSAGE);
@@ -756,19 +767,16 @@ class ArduinoWebSerial {
     if (this.port!=null) {
         await window.serialAPI.disconnect(this.port);
         this.port = null;
-        console.log('In stopListening, type:', typeof this.dataListener);
-        console.log('In stopListening, value:', this.dataListener);
+        this.validFirmware = false;
         if (this.dataListener && typeof this.dataListener === 'function') {
             this.dataListener(); // Remove the data listener
             this.dataListener = null; // Reset it
-            if (this.debug){
-                console.log('Data listener removed');
-            }
+            if (this.debug)
+              console.log('Data listener removed');
         }
         alert('🔌 Αποσυνδέθηκε από το Arduino');
     }
   }
-
 
   // Function aliases
   readSound = this.readAnalog;

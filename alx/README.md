@@ -39,3 +39,7 @@
 Όταν γίνει κάποια αναβάθμιση στο πρόσθετο / στα πρόσθετα, αρκεί να ενημερωθεί το αρχείο [userscript.js](./userscript.js) και όχι ολόκληρη η εφαρμογή.
 
 Καλή διασκέδαση!
+
+## Χρήσιμος σύνδεσμος
+
+<a href="https://base64.guru/converter/encode/text" target="_blank">Base64 encode</a>

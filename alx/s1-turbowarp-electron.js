@@ -355,6 +355,7 @@ class ArduinoWebSerial {
             ports  = result.ports;
             if (ports.length > 0) {
                 this.port = ports[0].path;
+                this.showLoading();
                 window.serialAPI.connectByIds('2341', null, 115200).then(result => {
                     this.dataListener = window.serialAPI.onData((data) => {
                         if (this.newMessage) {
@@ -370,6 +371,7 @@ class ArduinoWebSerial {
                 });
                 // Arduino kind of resets after a succesfull serial connection, so wait for it to reset and send the first message
                 new Promise(resolve => setTimeout(resolve, 3000)).then(() => {
+                  this.hideLoading();
                   if (this.lastMessage.trim()==="alx_firmata_kindof") {
                     this.validFirmware = true;
                     alert('Συνδέθηκε στο S1 Arduino!');
@@ -377,8 +379,9 @@ class ArduinoWebSerial {
                       console.log('S1 with the correct firmware!');
                   }
                   else {
-                    alert('S1 βρέθηκε αλλά χωρίς το σωστό firmware...');
+                    alert('S1 βρέθηκε αλλά χωρίς το σωστό firmware! \nΤο πρόσθετο δεν μπορεί να χρησιμοποιηθεί.');
                     this.validFirmware = false;
+                    this.port = null;
                     if (this.debug) 
                       console.log('S1 but not flashed with the correct firmware');
                     
@@ -777,6 +780,51 @@ class ArduinoWebSerial {
         alert('🔌 Αποσυνδέθηκε από το Arduino');
     }
   }
+
+  showLoading() {
+    const loader = document.createElement("div");
+    loader.id = "tw-loader";
+
+    loader.style.position = "fixed";
+    loader.style.top = "0";
+    loader.style.left = "0";
+    loader.style.width = "100vw";
+    loader.style.height = "100vh";
+    loader.style.background = "rgba(0,0,0,0.5)";
+    loader.style.display = "flex";
+    loader.style.justifyContent = "center";
+    loader.style.alignItems = "center";
+    loader.style.zIndex = "9999";
+
+    loader.innerHTML = `
+        <div style="
+            width: 60px;
+            height: 60px;
+            border: 8px solid #ccc;
+            border-top: 8px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        "></div>
+    `;
+
+    document.body.appendChild(loader);
+
+    // Add animation globally
+    const style = document.createElement("style");
+    style.innerHTML = `
+        @keyframes spin {
+            from {transform: rotate(0deg);}
+            to {transform: rotate(360deg);}
+        }
+    `;
+    document.head.appendChild(style);
+  }
+
+  hideLoading() {
+    const loader = document.getElementById("tw-loader");
+    if (loader) loader.remove();
+  }
+
 
   // Function aliases
   readSound = this.readAnalog;

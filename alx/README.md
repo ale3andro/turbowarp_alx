@@ -20,21 +20,7 @@
 %APPDATA%/turbowarp-desktop
 ```
 
-Για να βρεις με σιγουριά τον φάκελο, μπορείς να κάνεις κλικ στο εικονίδιο "?" στην πάνω δεξιά γωνία της εφαρμογής, 
-
-![questionmark_image](./img/questionmark_image.png)
-
-και μετά να επιλέξεις το "Desktop Settings" 
-
-![desktop_settings_image](./img/desktop_settings_image.png)
-
-και τέλος το "Open User Data"
-
-![open_user_data_image](./img/pen_user_data_image.png)
-
-Ξεκινάς την εφαρμογή turbowarp και το πρόσθετο / τα πρόσθετα πρέπει να είναι ήδη φορτωμένα!
-
-![extension_loaded](./img/extension_loaded.png)
+Αν δεν μπορείς να το βρεις τον φάκελο, δες αναλυτικότερες οδηγίες [εδώ](./README_how_find_the_user_folder.md)
 
 Όταν γίνει κάποια αναβάθμιση στο πρόσθετο / στα πρόσθετα, αρκεί να ενημερωθεί το αρχείο [userscript.js](./userscript.js) και όχι ολόκληρη η εφαρμογή.
 

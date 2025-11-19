@@ -18,7 +18,9 @@ flowchart TD
 
   C --> |Windows| E[στον φάκελο **%APPDATA%/turbowarp-desktop** - αν δεν το βρίσκες δες <a href="https://github.com/ale3andro/turbowarp_alx/blob/main/alx/README_how_find_the_user_folder.md">εδώ</a>] --> F
 
-  F[Βήμα 2 - Φλασάρισμα του S1] --> G{Θέλεις να ασχοληθείς με το Arduino IDE?}
+  C --> |MacOS| O[Δες <a href="https://github.com/ale3andro/turbowarp_alx/tree/main">εδώ</a> στην ενότητα **Advanced customizations** ] --> F
+
+  F[Βήμα 2 - Φλασάρισμα του S1] --> G{Έχες ή θέλεις να ασχοληθείς με το Arduino IDE?}
 
   G --> |Ναι| H[Ξεκίνα το Arduino IDE, εγκατέστησε τις βιβλιοθήκες **DHT11** και **Adafruit_NeoPixel**, φόρτωσε <a href="https://github.com/ale3andro/turbowarp_alx/blob/main/alx/s1-arduino.ino">αυτό</a> το αρχείο και κάνε upload στο S1] --> L
 
@@ -26,11 +28,21 @@ flowchart TD
 
   I --> |Ναι| J[Κατεβάζεις <a href="https://github.com/ale3andro/turbowarp_alx/blob/main/alx/windows-helper/flash_s1_windows.zip">αυτό το αρχείο</a>. Το αποσυμπιέζεις σε ένα φάκελο και εκτελείς το batch file **flash_S1.bat**. Αν έχεις τα σωστά δικαιώματα, τότε το S1 σου θα πρέπει να φλασαριστεί σωστά και να είναι έτοιμο για χρήση με το Turbowarp. Η μέθοδος αυτή, χρησιμοποιεί το εξαιρετικό εργαλείο avrdude, έκδοση 8.1, το οποίο αναπτύσσεται <a href="https://github.com/avrdudes/avrdude">εδώ</a>] --> L
 
-  I --> |Όχι| K[Αλήθεια τώρα; Έχεις τολμήσει το Linux και δεν έχεις τολμήσει ήδη το Arduino IDE; Πρέπει κάποια στιγμή να ασχοληθείς και με αυτό, γιατί θα κινδυνεύεις να βρεθείς σε ατέρμονα βρόγχο...] --> G
+  I --> |Όχι| Μ{Έχεις MacOS?}
+
+  Μ --> |Ναί| Q[Σε αυτό το μικρό γαλατικό χωριό δεν αποτελείς προτεραιότητα, βάλε Linux ή μάθε το Arduino IDE] --> C 
+
+  Μ --> |Όχι| K[Αλήθεια τώρα; Έχεις τολμήσει το Linux και δεν έχεις τολμήσει ήδη το Arduino IDE; Πρέπει κάποια στιγμή να ασχοληθείς και με αυτό, γιατί κινδυνεύεις να βρεθείς σε ατέρμονα βρόγχο...] --> G
 
   L[All set! Φτιάξε με τους μαθητές σου κάτι φανταστικό! Καλή διασκέδαση...]
 
+  
+
+  
+
 ```
+
+
 
 # Χρήση (ελεύθερο κείμενο)
 

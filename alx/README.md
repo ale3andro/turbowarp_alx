@@ -2,7 +2,37 @@
 
 Το έργο αυτό είναι ένα τροποποιημένο Turbowarp το οποίο επιτρέπει συνδέσεις μέσω Serial ώστε να υπάρχει **online επικοινωνία** με μια σειρά από μικροεπεξεργαστές όπως Arduino, Microbit κλπ.
 
-# Χρήση
+
+# Χρήση (σε διάγραμμα ροής)
+
+```mermaid
+
+flowchart TD
+  A[ Βήμα 0 - Κατεβάζεις από τα <a href="https://github.com/ale3andro/turbowarp_alx/releases">releases</a> την τελευταία έκδοση της εφαρμογής για το λειτουργικό σου σύστημα.] 
+  
+  --> B[ Βήμα 1 - Κατεβάζεις το αρχείο <a href="https://github.com/ale3andro/turbowarp_alx/blob/main/alx/userscript.js">userscript.js</a> το οποίο περιέχει το πρόσθετο για το κιτ S1, και το αντιγράφεις μέσα στον κατάλληλο φάκελο για το ΛΣ σου.]
+
+  --> C{Λειτουργικό Σύστημα?}
+
+  C --> |Linux| D[στον φάκελο **~/.config/turbowarp-desktop/**] --> F
+
+  C --> |Windows| E[στον φάκελο **%APPDATA%/turbowarp-desktop** - αν δεν το βρίσκες δες <a href="https://github.com/ale3andro/turbowarp_alx/blob/main/alx/README_how_find_the_user_folder.md">εδώ</a>] --> F
+
+  F[Βήμα 2 - Φλασάρισμα του S1] --> G{Θέλεις να ασχοληθείς με το Arduino IDE?}
+
+  G --> |Ναι| H[Ξεκίνα το Arduino IDE, εγκατέστησε τις βιβλιοθήκες **DHT11** και **Adafruit_NeoPixel**, φόρτωσε <a href="https://github.com/ale3andro/turbowarp_alx/blob/main/alx/s1-arduino.ino">αυτό</a> το αρχείο και κάνε upload στο S1] --> L
+
+  G --> |Όχι| I{Έχεις Windows?}
+
+  I --> |Ναι| J[Κατεβάζεις <a href="https://github.com/ale3andro/turbowarp_alx/blob/main/alx/windows-helper/flash_s1_windows.zip">αυτό το αρχείο</a>. Το αποσυμπιέζεις σε ένα φάκελο και εκτελείς το batch file **flash_S1.bat**. Αν έχεις τα σωστά δικαιώματα, τότε το S1 σου θα πρέπει να φλασαριστεί σωστά και να είναι έτοιμο για χρήση με το Turbowarp. Η μέθοδος αυτή, χρησιμοποιεί το εξαιρετικό εργαλείο avrdude, έκδοση 8.1, το οποίο αναπτύσσεται <a href="https://github.com/avrdudes/avrdude">εδώ</a>] --> L
+
+  I --> |Όχι| K[Πρέπει κάποια στιγμή να ασχοληθείς με το Arduino IDE, γιατί θα κινδυνεύεις να βρεθείς σε ατέρμονα βρόγχο...] --> G
+
+  L[All set! Φτιάξε με τους μαθητές σου κάτι φανταστικό! Καλή διασκέδαση...]
+
+```
+
+# Χρήση (ελεύθερο κείμενο)
 
 0. Κατεβάζεις από τα [releases](https://github.com/ale3andro/turbowarp_alx/releases) την τελευταία έκδοση της εφαρμογής για το λειτουργικό σου σύστημα.
 

@@ -302,7 +302,7 @@ class ArduinoWebSerial {
         },
         pins: {
           acceptReporters: false,
-          items: ['D4', 'D5', 'D6', 'D7', 'D8', 'D9']
+          items: ['D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D13']
         },
         pins_led_brightness: {
           acceptReporters: false,

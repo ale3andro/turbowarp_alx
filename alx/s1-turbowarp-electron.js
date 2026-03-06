@@ -457,11 +457,6 @@ class ArduinoWebSerial {
           }
         },
         {
-          opcode: 'connectionStatus',
-          blockType: Scratch.BlockType.BOOLEAN,
-          text: 'Συνδεδεμένο με S1;'
-        },
-        {
           opcode: 'disconnect',
           blockType: Scratch.BlockType.COMMAND,
           text: 'Αποσύνδεση από Arduino'
@@ -593,10 +588,6 @@ class ArduinoWebSerial {
     window.serialAPI.write(this.port, args.MESSAGE);
     await this.waitForMessage();
     console.log('Answer: ', this.lastMessage);
-  }
-
-  async connectionStatus() {
-    return !!(this.port && this.validFirmware);
   }
   
   async led(args) {

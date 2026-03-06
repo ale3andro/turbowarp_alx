@@ -7,13 +7,185 @@ class ArduinoWebSerial {
     this.newMessage = false;
     this.validFirmware = false;
 
-
     //OSBOLETE?
     this.reader = null;
     this.writer = null;
     this.textDecoder = new TextDecoder();
-    
+
+    this._initStatusBadge();
+    this._toastTimeout = null;
+    this._lastToastMessage = '';
   }
+
+  // ─── Floating Status Badge ─────────────────────────────────────────────────
+
+  _initStatusBadge() {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => this._createStatusBadge());
+    } else {
+      this._createStatusBadge();
+    }
+  }
+
+  _createStatusBadge() {
+    const existing = document.getElementById('s1-status-badge');
+    if (existing) existing.remove();
+
+    // Inject keyframe animation for the pulsing dot
+    if (!document.getElementById('s1-badge-style')) {
+      const style = document.createElement('style');
+      style.id = 's1-badge-style';
+      style.innerHTML = `
+        @keyframes s1-pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    const badge = document.createElement('div');
+    badge.id = 's1-status-badge';
+    badge.style.cssText = `
+      position: fixed;
+      top: 12px;
+      right: 16px;
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(15, 15, 25, 0.80);
+      color: #fff;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 6px 14px 6px 10px;
+      border-radius: 20px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      user-select: none;
+    `;
+
+    const dot = document.createElement('span');
+    dot.id = 's1-status-dot';
+    dot.style.cssText = `
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+      background: #ff4444;
+      box-shadow: 0 0 6px #ff444488;
+    `;
+
+    const label = document.createElement('span');
+    label.id = 's1-status-label';
+    label.textContent = 'S1 Χωρίς σύνδεση';
+
+    badge.appendChild(dot);
+    badge.appendChild(label);
+    document.body.appendChild(badge);
+
+    // Poll every second to actively detect physical disconnection
+    setInterval(() => this._pollConnection(), 1000);
+  }
+
+  _pollConnection() {
+    if (!this.port) {
+      this._updateStatusBadge();
+      return;
+    }
+    // Check if the Arduino is still physically present
+    window.serialAPI.findByIds('2341').then(result => {
+      const stillConnected = result.success && result.ports && result.ports.length > 0;
+      if (!stillConnected) {
+        this.port = null;
+        this.validFirmware = false;
+        if (this.dataListener && typeof this.dataListener === 'function') {
+          this.dataListener();
+          this.dataListener = null;
+        }
+        if (this.debug)
+          console.warn('S1 disconnected unexpectedly (cable pulled?)');
+      }
+      this._updateStatusBadge();
+    }).catch(() => {
+      this.port = null;
+      this.validFirmware = false;
+      this._updateStatusBadge();
+    });
+  }
+
+  _updateStatusBadge() {
+    const dot = document.getElementById('s1-status-dot');
+    const label = document.getElementById('s1-status-label');
+    if (!dot || !label) return;
+
+    if (this.port && this.validFirmware) {
+      dot.style.background = '#22dd66';
+      dot.style.boxShadow = '0 0 7px #22dd6699';
+      dot.style.animation = '';
+      label.textContent = 'S1 Συνδεδεμένο';
+    } else if (this.port && !this.validFirmware) {
+      dot.style.background = '#ffaa00';
+      dot.style.boxShadow = '0 0 7px #ffaa0099';
+      dot.style.animation = 's1-pulse 1.2s ease-in-out infinite';
+      label.textContent = 'S1 Λάθος firmware';
+    } else {
+      dot.style.background = '#ff4444';
+      dot.style.boxShadow = '0 0 6px #ff444488';
+      dot.style.animation = '';
+      label.textContent = 'S1 Χωρίς σύνδεση';
+    }
+  }
+
+  // ─── Non-blocking toast for in-loop errors ────────────────────────────────
+
+  _showToast(message) {
+    // Prevent the same message from spamming if called in a loop
+    if (this._lastToastMessage === message) return;
+    this._lastToastMessage = message;
+
+    let toast = document.getElementById('s1-toast');
+    if (toast) toast.remove();
+    if (this._toastTimeout) clearTimeout(this._toastTimeout);
+
+    toast = document.createElement('div');
+    toast.id = 's1-toast';
+    toast.textContent = message;
+    toast.style.cssText = `
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 99999;
+      background: rgba(30, 30, 40, 0.92);
+      color: #fff;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 10px 22px;
+      border-radius: 20px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      opacity: 1;
+      transition: opacity 0.5s ease;
+    `;
+    document.body.appendChild(toast);
+
+    // Fade out after 3 seconds, then allow the same message again
+    this._toastTimeout = setTimeout(() => {
+      toast.style.opacity = '0';
+      setTimeout(() => {
+        toast.remove();
+        this._lastToastMessage = '';
+      }, 500);
+    }, 3000);
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
 
   getInfo() {
     return {
@@ -151,7 +323,6 @@ class ArduinoWebSerial {
               type: Scratch.ArgumentType.ANGLE,
               defaultValue: 90
             },
-            
           }
         },
         {
@@ -239,7 +410,7 @@ class ArduinoWebSerial {
           }
         },
         {
-          opcode: 'isButtonPressed', // Κουμπί πίεσης
+          opcode: 'isButtonPressed',
           blockType: Scratch.BlockType.BOOLEAN,
           text: 'Κουμπί πίεσης στο pin [PIN]. Είναι πατημένο;',
           arguments: {
@@ -251,7 +422,7 @@ class ArduinoWebSerial {
           }
         },
         {
-          opcode: 'isButton2Pressed', // Κουμπί αφής
+          opcode: 'isButton2Pressed',
           blockType: Scratch.BlockType.BOOLEAN,
           text: 'Κουμπί αφής στο pin [PIN]. Είναι πατημένο;',
           arguments: {
@@ -263,7 +434,7 @@ class ArduinoWebSerial {
           }
         },
         {
-          opcode: 'isMotionSensorTriggered', // Κουμπί πίεσης
+          opcode: 'isMotionSensorTriggered',
           blockType: Scratch.BlockType.BOOLEAN,
           text: 'Αισθητήρας κίνησης στο pin [PIN]. Ανιχνεύτηκε κίνηση;',
           arguments: {
@@ -289,7 +460,8 @@ class ArduinoWebSerial {
           opcode: 'connectionStatus',
           blockType: Scratch.BlockType.BOOLEAN,
           text: 'Συνδεδεμένο με S1;'
-        },{
+        },
+        {
           opcode: 'disconnect',
           blockType: Scratch.BlockType.COMMAND,
           text: 'Αποσύνδεση από Arduino'
@@ -334,7 +506,7 @@ class ArduinoWebSerial {
         },
         notes: {
           acceptReporters: false, 
-          items: ["Χαμηλό Ντο (C3)", "Χαμηλό Ντο# (C#3)", "Χαμηλό Ρε (D3)", "Χαμηλό Ρε# (D#3)", "Χαμηλό Μι (E3)", "Χαμηλό Φα (C3)", "Χαμηλό Φα# (F#3)", "Χαμηλό Σολ (G3)", "Χαμηλό Σολ# (G#3)", "Χαμηλό Λα (A3)", "Χαμηλό Λα# (A#3)", "Χαμηλό Σι (B3)", "Μεσαίο Ντο (C4)", "Μεσαίο Ντο# (C#4)", "Μεσαίο Ρε (D4)", "Μεσαίο Ρε# (D#4)", "Μεσαίο Μι (E4)", "Μεσαίο Φα (F4)", "Μεσαίο Φα# (F#4)", "Μεσαίο Σολ (G4)", "Μεσαίο Σολ# (G#4)", "Μεσαίο Λα (A4)", "Μεσαίο Λα# (A#4)", "Μεσαίο Σι (B4)", "Υψηλό Ντο (C5)", "Υψηλό Ντο# (C#5)", "Υψηλό Ρε (D5)", "Υψηλό Ρε# (D#5)", "Υψηλό Μι (E5)", "Υψηλό Φα (F5)", "Υψηλό Φα# (F#5)", "Υψηλό Σολ (G5)", "Υψηλό Σολ# (G#5)", "Υψηλό Λα (A5)", "Υψηλό Λα# (A#5)", "Υψηλό Σι (B5)" ] 
+          items: ["Χαμηλό Ντο (C3)", "Χαμηλό Ντο# (C#3)", "Χαμηλό Ρε (D3)", "Χαμηλό Ρε# (D#3)", "Χαμηλό Μι (E3)", "Χαμηλό Φα (C3)", "Χαμηλό Φα# (F#3)", "Χαμηλό Σολ (G3)", "Χαμηλό Σολ# (G#3)", "Χαμηλό Λα (A3)", "Χαμηλό Λα# (A#3)", "Χαμηλό Σι (B3)", "Μεσαίο Ντο (C4)", "Μεσαίο Ντο# (C#4)", "Μεσαίο Ρε (D4)", "Μεσαίο Ρε# (D#4)", "Μεσαίο Μι (E4)", "Μεσαίο Φα (F4)", "Μεσαίο Φα# (F#4)", "Μεσαίο Σολ (G4)", "Μεσαίο Σολ# (G#4)", "Μεσαίο Λα (A4)", "Μεσαίο Λα# (A#4)", "Μεσαίο Σι (B4)", "Υψηλό Ντο (C5)", "Υψηλό Ντο# (C#5)", "Υψηλό Ρε (D5)", "Υψηλό Ρε# (D#5)", "Υψηλό Μι (E5)", "Υψηλό Φα (F5)", "Υψηλό Φα# (F#5)", "Υψηλό Σολ (G5)", "Υψηλό Σολ# (G#5)", "Υψηλό Λα (A5)", "Υψηλό Λα# (A#5)", "Υψηλό Σι (B5)"]
         },
         note_times: {
           acceptReporters: false, 
@@ -346,61 +518,59 @@ class ArduinoWebSerial {
 
   connect() {
     if (this.port) { 
-        console.log('Already connected');
-        return true;
-        }
-        let ports; 
-        window.serialAPI.findByIds('2341').then(result => {
-        if (result.success) {
-            ports  = result.ports;
-            if (ports.length > 0) {
-                this.port = ports[0].path;
-                this.showLoading();
-                window.serialAPI.connectByIds('2341', null, 115200).then(result => {
-                    this.dataListener = window.serialAPI.onData((data) => {
-                        if (this.newMessage) {
-                          this.lastMessage = '';
-                          this.newMessage = false;
-                        }
-                        this.lastMessage = this.lastMessage + data.data;
-                        if (data.data.includes('\n')) {
-                          this.newMessage = true;
-                          console.log('Type of message: ', typeof this.lastMessage);
-                        }
-                    });
-                });
-                // Arduino kind of resets after a succesfull serial connection, so wait for it to reset and send the first message
-                new Promise(resolve => setTimeout(resolve, 3000)).then(() => {
-                  this.hideLoading();
-                  if (this.lastMessage.trim()==="alx_firmata_kindof") {
-                    this.validFirmware = true;
-                    alert('Συνδέθηκε στο S1 Arduino!');
-                    if (this.debug)
-                      console.log('S1 with the correct firmware!');
-                  }
-                  else {
-                    alert('S1 βρέθηκε αλλά χωρίς το σωστό firmware! \nΤο πρόσθετο δεν μπορεί να χρησιμοποιηθεί.');
-                    this.validFirmware = false;
-                    this.port = null;
-                    if (this.debug) 
-                      console.log('S1 but not flashed with the correct firmware');
-                    
-                  }
-                });   
-               
+      console.log('Already connected');
+      return true;
+    }
+    let ports; 
+    window.serialAPI.findByIds('2341').then(result => {
+      if (result.success) {
+        ports = result.ports;
+        if (ports.length > 0) {
+          this.port = ports[0].path;
+          this.showLoading();
+          window.serialAPI.connectByIds('2341', null, 115200).then(result => {
+            this.dataListener = window.serialAPI.onData((data) => {
+              if (this.newMessage) {
+                this.lastMessage = '';
+                this.newMessage = false;
+              }
+              this.lastMessage = this.lastMessage + data.data;
+              if (data.data.includes('\n')) {
+                this.newMessage = true;
+                console.log('Type of message: ', typeof this.lastMessage);
+              }
+            });
+          });
+          // Arduino resets after a successful serial connection, wait for it
+          new Promise(resolve => setTimeout(resolve, 3000)).then(() => {
+            this.hideLoading();
+            if (this.lastMessage.trim() === "alx_firmata_kindof") {
+              this.validFirmware = true;
+              this._updateStatusBadge();
+              alert('Συνδέθηκε στο S1 Arduino!');
+              if (this.debug)
+                console.log('S1 with the correct firmware!');
             } else {
-                alert('Δεν βρέθηκε συνδεδεμένο S1!');
-                return false;
+              alert('S1 βρέθηκε αλλά χωρίς το σωστό firmware! \nΤο πρόσθετο δεν μπορεί να χρησιμοποιηθεί.');
+              this.validFirmware = false;
+              this.port = null;
+              this._updateStatusBadge();
+              if (this.debug) 
+                console.log('S1 but not flashed with the correct firmware');
             }
+          });
+        } else {
+          alert('Δεν βρέθηκε συνδεδεμένο S1!');
+          return false;
         }
-        else
-            return false;
-        });
+      } else {
+        return false;
+      }
+    });
   }
 
   async waitForMessage(timeout = 5000) {
     const startTime = Date.now();
-    // Give 20ms for the serial listener to start picking up data
     await new Promise(resolve => setTimeout(resolve, 20));
     while (!this.newMessage) {
       if (Date.now() - startTime > timeout) {
@@ -413,213 +583,106 @@ class ArduinoWebSerial {
 
   async send(args) {
     if (!this.port) {
-      alert('Δεν υπάρχει σύνδεση με το S1');
+      this._showToast('⚠️ Δεν υπάρχει σύνδεση με το S1');
       return;
     }
     if (!this.validFirmware) {
-      alert('Πρέπει να flashάρεις το S1 με το σωσtό firmware πριν τη χρήση..');
+      this._showToast('⚠️ Λάθος firmware — συνδέσου πρώτα με το S1');
       return;
     }
     window.serialAPI.write(this.port, args.MESSAGE);
-    
     await this.waitForMessage();
     console.log('Answer: ', this.lastMessage);
   }
 
   async connectionStatus() {
-    if (!this.port)
-      return false;
-    else 
-      return true;
+    return !!(this.port && this.validFirmware);
   }
   
   async led(args) {
-    if (!this.port) {
-      alert('Χωρίς σύνδεση με το S1!');
-      return;
-    }
+    if (!this.port) { this._showToast('⚠️ Χωρίς σύνδεση με το S1!'); return; }
     const pin = args.PIN;
-    const cmd = args.STATE === 'άναψε' ? 'LED_ON_' + pin.substring(1)  : 'LED_OFF_' + pin.substring(1);
-    
+    const cmd = args.STATE === 'άναψε' ? 'LED_ON_' + pin.substring(1) : 'LED_OFF_' + pin.substring(1);
     await window.serialAPI.write(this.port, cmd);
   }
 
   async led_brightness(args) {
-    if (!this.port) {
-      alert('Χωρίς σύνδεση με το S1!');
-      return;
-    }
+    if (!this.port) { this._showToast('⚠️ Χωρίς σύνδεση με το S1!'); return; }
     const pin = args.PIN;
     const brightness = args.BRIGHTNESS;
     const cmd = 'LEDBRIGHTNESS_' + pin.substring(1) + '_' + brightness;
-    
     await window.serialAPI.write(this.port, cmd);
   }
 
   async motor(args) {
-    if (!this.port) {
-      alert('Χωρίς σύνδεση με το S1!');
-      return;
-    }
+    if (!this.port) { this._showToast('⚠️ Χωρίς σύνδεση με το S1!'); return; }
     const speed = args.SPEED;
-    const direction = args.DIRECTION === 'ρολογιού' ? '1'  : '0';
-
+    const direction = args.DIRECTION === 'ρολογιού' ? '1' : '0';
     const cmd = 'MOTOR_' + speed + '_' + direction;
-    
     await window.serialAPI.write(this.port, cmd);
   }
 
   async buzzer(args) {
-    if (!this.port) {
-      alert('Χωρίς σύνδεση με το S1!');
-      return;
-    }
+    if (!this.port) { this._showToast('⚠️ Χωρίς σύνδεση με το S1!'); return; }
     const pin = args.PIN;
     const Bnote = args.NOTE;
     const Btime = args.TIME;
-    var time=0;
-    var note=0;
+    var time = 0;
+    var note = 0;
 
     switch (Btime) {
-      case 'μισό':
-        time=500;
-        break;
-      case 'τέταρτο':
-        time=250;
-        break;
-      case 'όγδοο':
-        time=125;
-        break;
-      case 'ολόκληρο':
-        time=1000;
-        break;
-      case 'διπλό':
-        time=2000;
-        break;
-      default:
-        time=1;
+      case 'μισό': time = 500; break;
+      case 'τέταρτο': time = 250; break;
+      case 'όγδοο': time = 125; break;
+      case 'ολόκληρο': time = 1000; break;
+      case 'διπλό': time = 2000; break;
+      default: time = 1;
     }
     switch (Bnote) {
-      case 'Χαμηλό Ντο (C3)':
-          note = 131;
-          break;
-      case 'Χαμηλό Ντο# (C#3)':
-          note = 139;
-          break;
-      case 'Χαμηλό Ρε (D3)':
-          note = 147;
-          break;
-      case 'Χαμηλό Ρε# (D#3)':
-          note = 156;
-          break;
-      case 'Χαμηλό Μι (E3)':
-          note = 165;
-          break;
-      case 'Χαμηλό Φα (C3)':
-          note = 175;
-          break;
-      case 'Χαμηλό Φα# (F#3)':
-          note = 185;
-          break;
-      case 'Χαμηλό Σολ (G3)':
-          note = 196;
-          break;
-      case 'Χαμηλό Σολ# (G#3)':
-          note = 208;
-          break;
-      case 'Χαμηλό Λα (A3)':
-          note = 220;
-          break;
-      case 'Χαμηλό Λα# (A#3)':
-          note = 233;
-          break;
-      case 'Χαμηλό Σι (B3)':
-          note = 247;
-          break;
-      case 'Μεσαίο Ντο (C4)':
-          note = 262;
-          break;
-      case 'Μεσαίο Ντο# (C#4)':
-          note = 277;
-          break;
-      case 'Μεσαίο Ρε (D4)':
-          note = 294;
-          break;
-      case 'Μεσαίο Ρε# (D#4)':
-          note = 311;
-          break;
-      case 'Μεσαίο Μι (E4)':
-          note = 330;
-          break;
-      case 'Μεσαίο Φα (F4)':
-          note = 349;
-          break;
-      case 'Μεσαίο Φα# (F#4)':
-          note = 370;
-          break;
-      case 'Μεσαίο Σολ (G4)':
-          note = 392;
-          break;
-      case 'Μεσαίο Σολ# (G#4)':
-          note = 415;
-          break;
-      case 'Μεσαίο Λα (A4)':
-          note = 440;
-          break;
-      case 'Μεσαίο Λα# (A#4)':
-          note = 466;
-          break;
-      case 'Μεσαίο Σι (B4)':
-          note = 494;
-          break;
-      case 'Υψηλό Ντο (C5)':
-          note = 523;
-          break;
-      case 'Υψηλό Ντο# (C#5)':
-          note = 554;
-          break;
-      case 'Υψηλό Ρε (D5)':
-          note = 587;
-          break;
-      case 'Υψηλό Ρε# (D#5)':
-          note = 622;
-          break;
-      case 'Υψηλό Μι (E5)':
-          note = 659;
-          break;
-      case 'Υψηλό Φα (F5)':
-          note = 698;
-          break;
-      case 'Υψηλό Φα# (F#5)':
-          note = 740;
-          break;
-      case 'Υψηλό Σολ (G5)':
-          note = 784;
-          break;
-      case 'Υψηλό Σολ# (G#5)':
-          note = 831;
-          break;
-      case 'Υψηλό Λα (A5)':
-          note = 880;
-          break;
-      case 'Υψηλό Λα# (A#5)':
-          note = 932;
-          break;
-      case 'Υψηλό Σι (B5)':
-          note = 988;
-          break;
-      default:
-          note = 494;
-    }   
+      case 'Χαμηλό Ντο (C3)': note = 131; break;
+      case 'Χαμηλό Ντο# (C#3)': note = 139; break;
+      case 'Χαμηλό Ρε (D3)': note = 147; break;
+      case 'Χαμηλό Ρε# (D#3)': note = 156; break;
+      case 'Χαμηλό Μι (E3)': note = 165; break;
+      case 'Χαμηλό Φα (C3)': note = 175; break;
+      case 'Χαμηλό Φα# (F#3)': note = 185; break;
+      case 'Χαμηλό Σολ (G3)': note = 196; break;
+      case 'Χαμηλό Σολ# (G#3)': note = 208; break;
+      case 'Χαμηλό Λα (A3)': note = 220; break;
+      case 'Χαμηλό Λα# (A#3)': note = 233; break;
+      case 'Χαμηλό Σι (B3)': note = 247; break;
+      case 'Μεσαίο Ντο (C4)': note = 262; break;
+      case 'Μεσαίο Ντο# (C#4)': note = 277; break;
+      case 'Μεσαίο Ρε (D4)': note = 294; break;
+      case 'Μεσαίο Ρε# (D#4)': note = 311; break;
+      case 'Μεσαίο Μι (E4)': note = 330; break;
+      case 'Μεσαίο Φα (F4)': note = 349; break;
+      case 'Μεσαίο Φα# (F#4)': note = 370; break;
+      case 'Μεσαίο Σολ (G4)': note = 392; break;
+      case 'Μεσαίο Σολ# (G#4)': note = 415; break;
+      case 'Μεσαίο Λα (A4)': note = 440; break;
+      case 'Μεσαίο Λα# (A#4)': note = 466; break;
+      case 'Μεσαίο Σι (B4)': note = 494; break;
+      case 'Υψηλό Ντο (C5)': note = 523; break;
+      case 'Υψηλό Ντο# (C#5)': note = 554; break;
+      case 'Υψηλό Ρε (D5)': note = 587; break;
+      case 'Υψηλό Ρε# (D#5)': note = 622; break;
+      case 'Υψηλό Μι (E5)': note = 659; break;
+      case 'Υψηλό Φα (F5)': note = 698; break;
+      case 'Υψηλό Φα# (F#5)': note = 740; break;
+      case 'Υψηλό Σολ (G5)': note = 784; break;
+      case 'Υψηλό Σολ# (G#5)': note = 831; break;
+      case 'Υψηλό Λα (A5)': note = 880; break;
+      case 'Υψηλό Λα# (A#5)': note = 932; break;
+      case 'Υψηλό Σι (B5)': note = 988; break;
+      default: note = 494;
+    }
     const cmd = 'BUZZER_' + pin.substring(1) + '_' + note + '_' + time;
     await window.serialAPI.write(this.port, cmd);
   }
 
   async neopixel(args) {
-    if (!this.port) {
-      alert('Χωρίς σύνδεση με το S1!');
-      return;
-    }
+    if (!this.port) { this._showToast('⚠️ Χωρίς σύνδεση με το S1!'); return; }
     const pin = args.PIN;
     const tLeds = args.LEDS;
     const r = args.R;
@@ -628,163 +691,115 @@ class ArduinoWebSerial {
     const brightness = args.BRIGHTNESS;
     var leds = 0;
     switch (tLeds) {
-      case '1ο':
-        leds = 0;
-        break;
-      case '2ο':
-        leds = 1;
-        break;
-      case '3ο':
-        leds = 2;
-        break;
-      case '4ο':
-        leds = 3;
-        break;
-      default:
-        leds = 4;
+      case '1ο': leds = 0; break;
+      case '2ο': leds = 1; break;
+      case '3ο': leds = 2; break;
+      case '4ο': leds = 3; break;
+      default: leds = 4;
     }
     const cmd = "NEOPIXEL_" + pin.substring(1) + '_' + leds + '_' + r + '_' + g + '_' + b + '_' + brightness;
     await window.serialAPI.write(this.port, cmd);
   }
 
   async servo(args) {
-    if (!this.port) {
-      alert('Χωρίς σύνδεση με το S1!');
-      return;
-    }
+    if (!this.port) { this._showToast('⚠️ Χωρίς σύνδεση με το S1!'); return; }
     const pin = args.PIN;
     const angle = args.ANGLE;
     const cmd = 'SERVO_' + pin.substring(1) + '_' + angle;
-    
     await window.serialAPI.write(this.port, cmd);
   }
 
   async readTemp(args) {
-    if (!this.port) {
-      alert('Χωρίς σύνδεση με το S1!');
-      return;
-    }
+    if (!this.port) { this._showToast('⚠️ Χωρίς σύνδεση με το S1!'); return; }
     const pin = args.PIN;
     const cmd = 'TEMP_' + pin.substring(1);
-    
     await window.serialAPI.write(this.port, cmd);
-    
     // TODO Fix the returning value
     let result = '';
     while (true) {
       const { value, done } = await this.reader.read();
       if (done) break;
       result += value;
-      if (result.includes('\n')) break; // got full line
+      if (result.includes('\n')) break;
     }
     return result.trim();
   }
 
   async readHum(args) {
-    if (!this.port) {
-      alert('Χωρίς σύνδεση με το S1!');
-      return;
-    }
+    if (!this.port) { this._showToast('⚠️ Χωρίς σύνδεση με το S1!'); return; }
     const pin = args.PIN;
     const cmd = 'HUM_' + pin.substring(1);
-    
     await window.serialAPI.write(this.port, cmd);
-    
-    //TODO fix the returning valaue
+    // TODO fix the returning value
     let result = '';
     while (true) {
       const { value, done } = await this.reader.read();
       if (done) break;
       result += value;
-      if (result.includes('\n')) break; // got full line
+      if (result.includes('\n')) break;
     }
     return result.trim();
   }
 
   async readAnalog(args) {
-    if (!this.port) {
-      alert('Δεν έχει γίνει σύνδεση με το S1');
-      return;
-    }
+    if (!this.port) { this._showToast('⚠️ Δεν έχει γίνει σύνδεση με το S1'); return; }
     const pin = args.PIN;
     const cmd = 'READ_' + pin.substring(1);
     await window.serialAPI.write(this.port, cmd);
-
-    // TODO Fix the returning value
-    /*
-    let result = '';
-    while (true) {
-      const { value, done } = await this.reader.read();
-      if (done) break;
-      result += value;
-      if (result.includes('\n')) break; // got full line
-    }
-    
-    return result.trim();
-    */
-    
     return this.lastMessage.trim();
   }
   
   async isButtonPressed(args) {
-    if (!this.port) {
-      alert('Χωρίς σύνδεση με το S1!');
-      return;
-    }
+    if (!this.port) { this._showToast('⚠️ Χωρίς σύνδεση με το S1!'); return; }
     const pin = args.PIN;
     const cmd = 'BUTTON_' + pin.substring(1);
     await window.serialAPI.write(this.port, cmd);
-
     // TODO Fix the returning value
     let result = '';
     while (true) {
       const { value, done } = await this.reader.read();
       if (done) break;
       result += value;
-      if (result.includes('\n')) break; // got full line
+      if (result.includes('\n')) break;
     }
     return result.trim();
   }
 
-  async isButton2Pressed(args) { // κουμπί αφής
-    if (!this.port) {
-      alert('Χωρίς σύνδεση με το S1!');
-      return;
-    }
+  async isButton2Pressed(args) {
+    if (!this.port) { this._showToast('⚠️ Χωρίς σύνδεση με το S1!'); return; }
     const pin = args.PIN;
     const cmd = 'BUTTON2_' + pin.substring(1);
-    
     await window.serialAPI.write(this.port, cmd);
-
     // TODO Fix the returning value
     let result = '';
     while (true) {
       const { value, done } = await this.reader.read();
       if (done) break;
       result += value;
-      if (result.includes('\n')) break; // got full line
+      if (result.includes('\n')) break;
     }
     return result.trim();
   }
+
   async disconnect() {
-    if (this.port!=null) {
-        await window.serialAPI.disconnect(this.port);
-        this.port = null;
-        this.validFirmware = false;
-        if (this.dataListener && typeof this.dataListener === 'function') {
-            this.dataListener(); // Remove the data listener
-            this.dataListener = null; // Reset it
-            if (this.debug)
-              console.log('Data listener removed');
-        }
-        alert('🔌 Αποσυνδέθηκε από το Arduino');
+    if (this.port != null) {
+      await window.serialAPI.disconnect(this.port);
+      this.port = null;
+      this.validFirmware = false;
+      this._updateStatusBadge();
+      if (this.dataListener && typeof this.dataListener === 'function') {
+        this.dataListener();
+        this.dataListener = null;
+        if (this.debug)
+          console.log('Data listener removed');
+      }
+      alert('🔌 Αποσυνδέθηκε από το Arduino');
     }
   }
 
   showLoading() {
     const loader = document.createElement("div");
     loader.id = "tw-loader";
-
     loader.style.position = "fixed";
     loader.style.top = "0";
     loader.style.left = "0";
@@ -795,27 +810,23 @@ class ArduinoWebSerial {
     loader.style.justifyContent = "center";
     loader.style.alignItems = "center";
     loader.style.zIndex = "9999";
-
     loader.innerHTML = `
-        <div style="
-            width: 60px;
-            height: 60px;
-            border: 8px solid #ccc;
-            border-top: 8px solid #4CAF50;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        "></div>
+      <div style="
+        width: 60px;
+        height: 60px;
+        border: 8px solid #ccc;
+        border-top: 8px solid #4CAF50;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      "></div>
     `;
-
     document.body.appendChild(loader);
-
-    // Add animation globally
     const style = document.createElement("style");
     style.innerHTML = `
-        @keyframes spin {
-            from {transform: rotate(0deg);}
-            to {transform: rotate(360deg);}
-        }
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
     `;
     document.head.appendChild(style);
   }
@@ -824,7 +835,6 @@ class ArduinoWebSerial {
     const loader = document.getElementById("tw-loader");
     if (loader) loader.remove();
   }
-
 
   // Function aliases
   readSound = this.readAnalog;

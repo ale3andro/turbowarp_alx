@@ -194,10 +194,21 @@ class ArduinoWebSerial {
       color1: '#007bff',
       color2: '#0062cc',
       blocks: [
+        // --- Group 1: Σύνδεση ---
+        {
+          blockType: Scratch.BlockType.LABEL,
+          text: 'Σϋνδεση'
+        },
         {
           opcode: 'connect',
           blockType: Scratch.BlockType.COMMAND,
           text: 'σύνδεση με Arduino'
+        },
+        '---',
+        // --- Group 2: Led και Neopixel ---
+        {
+          blockType: Scratch.BlockType.LABEL,
+          text: 'Led και Neopixel'
         },
         {
           opcode: 'led',
@@ -269,6 +280,12 @@ class ArduinoWebSerial {
               defaultValue: '50'
             }
           }
+        },
+        '---',
+        // --- Group 3: Άλλοι ενεργοποιητές ---
+        {
+          blockType: Scratch.BlockType.LABEL,
+          text: 'Άλλοι ενεργοποιητές'
         },
         {
           opcode: 'buzzer',
@@ -342,10 +359,47 @@ class ArduinoWebSerial {
             },            
           }
         },
+        '---',
+        // --- Group 4: Κουμπιά ---
+        {
+          blockType: Scratch.BlockType.LABEL,
+          text: 'Κουμπιά'
+        },
+        {
+          opcode: 'isButtonPressed',
+          blockType: Scratch.BlockType.BOOLEAN,
+          text: 'Κουμπί πίεσης στο pin [PIN]. Είναι πατημένο;',
+          arguments: {
+            PIN: {
+              type: Scratch.ArgumentType.STRING,
+              menu: 'servo_pins',
+              defaultValue: 'D7'
+            }
+          }
+        },
+        {
+          opcode: 'isButton2Pressed',
+          blockType: Scratch.BlockType.BOOLEAN,
+          text: 'Κουμπί αφής στο pin [PIN]. Είναι πατημένο;',
+          arguments: {
+            PIN: {
+              type: Scratch.ArgumentType.STRING,
+              menu: 'servo_pins',
+              defaultValue: 'D6'
+            }
+          }
+        },
+        '---',
+        // --- Group 5: Αισθητήρες ---
+        {
+          blockType: Scratch.BlockType.LABEL,
+          text: 'Αισθητήρες'
+        },
         {
           opcode: 'readTemp',
           blockType: Scratch.BlockType.REPORTER,
           text: 'Διάβασε θερμοκρασία από το pin [PIN]',
+          disableMonitor: true,
           arguments: {
             PIN: {
               type: Scratch.ArgumentType.STRING,
@@ -357,6 +411,7 @@ class ArduinoWebSerial {
           opcode: 'readHum',
           blockType: Scratch.BlockType.REPORTER,
           text: 'Διάβασε υγρασία από το pin [PIN]',
+          disableMonitor: true,
           arguments: {
             PIN: {
               type: Scratch.ArgumentType.STRING,
@@ -410,30 +465,6 @@ class ArduinoWebSerial {
           }
         },
         {
-          opcode: 'isButtonPressed',
-          blockType: Scratch.BlockType.BOOLEAN,
-          text: 'Κουμπί πίεσης στο pin [PIN]. Είναι πατημένο;',
-          arguments: {
-            PIN: {
-              type: Scratch.ArgumentType.STRING,
-              menu: 'servo_pins',
-              defaultValue: 'D7'
-            }
-          }
-        },
-        {
-          opcode: 'isButton2Pressed',
-          blockType: Scratch.BlockType.BOOLEAN,
-          text: 'Κουμπί αφής στο pin [PIN]. Είναι πατημένο;',
-          arguments: {
-            PIN: {
-              type: Scratch.ArgumentType.STRING,
-              menu: 'servo_pins',
-              defaultValue: 'D6'
-            }
-          }
-        },
-        {
           opcode: 'isMotionSensorTriggered',
           blockType: Scratch.BlockType.BOOLEAN,
           text: 'Αισθητήρας κίνησης στο pin [PIN]. Ανιχνεύτηκε κίνηση;',
@@ -444,6 +475,12 @@ class ArduinoWebSerial {
               defaultValue: 'D7'
             }
           }
+        },
+        '---',
+        // --- Group 6: Άλλα blocks ---
+        {
+          blockType: Scratch.BlockType.LABEL,
+          text: 'Άλλα block'
         },
         {
           opcode: 'send',
@@ -460,7 +497,8 @@ class ArduinoWebSerial {
           opcode: 'disconnect',
           blockType: Scratch.BlockType.COMMAND,
           text: 'Αποσύνδεση από Arduino'
-        }
+        },
+        '---',
       ],
       menus: {
         onoff: { 
@@ -705,15 +743,7 @@ class ArduinoWebSerial {
     const pin = args.PIN;
     const cmd = 'TEMP_' + pin.substring(1);
     await window.serialAPI.write(this.port, cmd);
-    // TODO Fix the returning value
-    let result = '';
-    while (true) {
-      const { value, done } = await this.reader.read();
-      if (done) break;
-      result += value;
-      if (result.includes('\n')) break;
-    }
-    return result.trim();
+    return this.lastMessage.trim();
   }
 
   async readHum(args) {
@@ -721,15 +751,7 @@ class ArduinoWebSerial {
     const pin = args.PIN;
     const cmd = 'HUM_' + pin.substring(1);
     await window.serialAPI.write(this.port, cmd);
-    // TODO fix the returning value
-    let result = '';
-    while (true) {
-      const { value, done } = await this.reader.read();
-      if (done) break;
-      result += value;
-      if (result.includes('\n')) break;
-    }
-    return result.trim();
+    return this.lastMessage.trim();
   }
 
   async readAnalog(args) {
@@ -737,7 +759,7 @@ class ArduinoWebSerial {
     const pin = args.PIN;
     const cmd = 'READ_' + pin.substring(1);
     await window.serialAPI.write(this.port, cmd);
-    return this.lastMessage.trim();
+    return this.lastMessage.trim();    
   }
   
   async isButtonPressed(args) {
@@ -745,15 +767,7 @@ class ArduinoWebSerial {
     const pin = args.PIN;
     const cmd = 'BUTTON_' + pin.substring(1);
     await window.serialAPI.write(this.port, cmd);
-    // TODO Fix the returning value
-    let result = '';
-    while (true) {
-      const { value, done } = await this.reader.read();
-      if (done) break;
-      result += value;
-      if (result.includes('\n')) break;
-    }
-    return result.trim();
+    return this.lastMessage.trim();
   }
 
   async isButton2Pressed(args) {
@@ -761,15 +775,7 @@ class ArduinoWebSerial {
     const pin = args.PIN;
     const cmd = 'BUTTON2_' + pin.substring(1);
     await window.serialAPI.write(this.port, cmd);
-    // TODO Fix the returning value
-    let result = '';
-    while (true) {
-      const { value, done } = await this.reader.read();
-      if (done) break;
-      result += value;
-      if (result.includes('\n')) break;
-    }
-    return result.trim();
+    return this.lastMessage.trim();
   }
 
   async disconnect() {
